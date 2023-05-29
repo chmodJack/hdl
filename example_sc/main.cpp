@@ -1,138 +1,9 @@
 #include <systemc.h>
 
-struct uart_tx: sc_module
-{
-	sc_in<bool> clk;
-	sc_in<bool> rst;
-
-	sc_in<bool> en;
-	sc_in<sc_uint<8>> data;
-
-	sc_out<bool> tx;
-	sc_out<bool> busy;
-
-	SC_CTOR(uart_tx)
-	{
-		SC_THREAD(run);
-		sensitive << clk.pos() << rst.neg();
-
-		async_reset_signal_is(rst,0);
-	}
-	void run()
-	{
-		tx = 1;
-		busy = 0;
-
-		while(1)
-		{
-			wait();
-
-			if(en)
-			{
-				busy = 1;
-				tx = 0;	wait();
-				tx = data.read()[0]; wait();
-				tx = data.read()[1]; wait();
-				tx = data.read()[2]; wait();
-				tx = data.read()[3]; wait();
-				tx = data.read()[4]; wait();
-				tx = data.read()[5]; wait();
-				tx = data.read()[6]; wait();
-				tx = data.read()[7]; wait();
-				tx = 1;busy = 0;
-			}
-		}
-	}
-};
- 
-struct fifo: sc_module
-{
-	sc_in<bool> clk;
-	sc_in<bool> rst;
-
-	sc_in<sc_uint<8>> data_i;
-
-	sc_in<bool> en_r;
-	sc_in<bool> en_w;
-
-	sc_out<sc_uint<8>> data_o;
-
-	sc_out<bool> full;
-	sc_out<bool> empty;
-
-	sc_out<bool> ack_r;
-	sc_out<bool> ack_w;
-
-	sc_uint<8> buffer[8];
-	uint8_t head;
-	uint8_t tail;
-
-	SC_CTOR(fifo)
-	{
-		SC_THREAD(run);
-		sensitive << clk.pos() << rst.neg();
-
-		async_reset_signal_is(rst,0);
-	}
-
-	void run()
-	{
-		data_o = 0;
-		full = 0;
-		empty = 1;
-		ack_r = 0;
-		ack_w = 0;
-
-		head = 0;
-		tail = 0;
-
-		for(int i=0;i<8;i++)
-			buffer[i] = 0;
-
-		while(1)
-		{
-			wait();
-
-			if(en_r && not empty)
-			{
-				data_o = buffer[head];
-				head = head + 1;
-
-				if(head == 8)
-					head = 0;
-
-				if(head == tail)
-					empty = 1;
-
-				ack_r = 1;
-				full = 0;
-			}
-			else
-			{
-				ack_r = 0;
-			}
-
-			if(en_w && not full)
-			{
-				buffer[tail] = data_i;
-				tail = tail + 1;
-
-				if(tail == 8)
-					tail = 0;
-
-				if(tail == head)
-					full = 1;
-
-				ack_w = 1;
-				empty = 0;
-			}
-			else
-			{
-				ack_w = 0;
-			}
-		}
-	}
-};
+#include "counter.hpp"
+#include "uart_tx.hpp"
+#include "fifo.hpp"
+#include "is_prime.hpp"
 
 struct top: sc_module 
 {
@@ -155,13 +26,18 @@ struct top: sc_module
 	sc_signal<bool> ack_r;
 	sc_signal<bool> ack_w;
 
+	counter<8> cn{"cn"};
+	sc_signal<sc_uint<8>> max;
+	sc_signal<sc_uint<8>> cnt;
+	sc_signal<bool> carry;
+
 
     SC_CTOR(top)
     {
 		SC_THREAD(run);
 		async_reset_signal_is(rst,0);
-#define BIND(M,P) M.P(P)
 
+#define BIND(M,P) M.P(P)
 		BIND(ut,clk);
 		BIND(ut,rst);
 		BIND(ut,en);
@@ -179,17 +55,57 @@ struct top: sc_module
 		BIND(ff,empty);
 		BIND(ff,ack_r);
 		BIND(ff,ack_w);
+
+		BIND(cn,clk);
+		BIND(cn,rst);
+		BIND(cn,max);
+		BIND(cn,cnt);
+		BIND(cn,carry);
 #undef BIND
     }
 
 	void run()
 	{
-		rst = 1;
-		wait();
-		rst = 0;
-		wait();
-		rst = 1;
-		wait();
+		while(1)
+		{
+			clk = !clk;
+			wait();
+		}
+	}
+};
+
+struct top_prime: sc_module 
+{
+	sc_signal<bool> clk;
+	sc_signal<bool> rst;
+
+	counter<32> cn{"cn"};
+	sc_signal<sc_uint<32>> max;
+	sc_signal<sc_uint<32>> cnt;
+	sc_signal<bool> carry;
+
+	is_prime ip{"ip"};
+	sc_signal<bool> is_p;
+
+    SC_CTOR(top_prime)
+    {
+		SC_THREAD(run);
+		async_reset_signal_is(rst,0);
+
+#define BIND(M,P) M.P(P)
+		BIND(cn,clk);
+		BIND(cn,rst);
+		BIND(cn,max);
+		BIND(cn,cnt);
+		BIND(cn,carry);
+
+		ip.data(cnt);
+		ip.is_p(is_p);
+#undef BIND
+    }
+
+	void run()
+	{
 		while(1)
 		{
 			clk = !clk;
@@ -198,9 +114,9 @@ struct top: sc_module
 	}
 };
  
-int sc_main (int argc, char **argv) 
+int sc_main (int argc, char **argv)
 {
-    top top_inst("top_inst");
+    top_prime top_inst("top_inst");
     sc_start();
     return 0;
 }

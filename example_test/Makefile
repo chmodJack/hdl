@@ -1,5 +1,5 @@
 all:
-	$(vcs) -debug_access+all -kdb -lca +lint=PCWM tb.sv /home/jack/projects/hdl/sc/build/sv_out/main.sv
+	$(vcs) -debug_access+all -kdb -lca +lint=PCWM tb.sv /home/jack/projects/hdl/example_sc/build/sv_out/main.sv
 clean:
 	rm -rf csrc  inter.fsdb*  novas.conf  novas.rc  novas_dump.log  simv  simv.daidir    ucli.key  verdiLog tb.fsdb* top.json top.svg vc_hdrs.h
 

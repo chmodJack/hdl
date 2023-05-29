@@ -5,20 +5,13 @@ module tb();
 logic clk;
 logic rst;
 
-//logic en,tx,busy;
-//logic [7:0] data;
-//uart_tx ut(clk,rst,en,data,tx,busy);
+logic [31:0] max;
+logic [31:0] cnt;
+logic carry;
+counter cn(clk,rst,max,cnt,carry);
 
-logic [7:0] data_i;
-logic [7:0] data_o;
-logic en_r;
-logic en_w;
-logic ack_r;
-logic ack_w;
-logic full;
-logic empty;
-
-fifo ff(clk,rst,data_i,en_r,en_w,data_o,full,empty,ack_r,ack_w);
+logic is_p;
+is_prime ip(cnt,is_p);
 
 ////////////////////////////////////////////////////////////////////////////////////
 

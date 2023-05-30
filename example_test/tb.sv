@@ -4,14 +4,10 @@ module tb();
 
 logic clk;
 logic rst;
+logic rx,en,busy;
+logic [7:0] data;
 
-logic [31:0] max;
-logic [31:0] cnt;
-logic carry;
-counter cn(clk,rst,max,cnt,carry);
-
-logic is_p;
-is_prime ip(cnt,is_p);
+uart_rx ur(clk,rst,rx,en,busy,data);
 
 ////////////////////////////////////////////////////////////////////////////////////
 

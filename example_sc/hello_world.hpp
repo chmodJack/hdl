@@ -1,52 +1,50 @@
 /*************************************************************************
-    > File Name       : counter.hpp
+    > File Name       : hello_world.hpp
     > Author          : chmodJack
     > Mail            : 158754845@qq.com 
     > GitHub          : https://github.com/chmodJack 
-    > Created Time    : Mon May 29 23:29:14 2023
+    > Created Time    : Wed May 31 16:39:12 2023
     > Description     : 
 *************************************************************************/
-#ifndef __COUNTER_HPP__
-#define __COUNTER_HPP__
+#ifndef __HELLO_WORLD_HPP__
+#define __HELLO_WORLD_HPP__
 
 #include <systemc.h>
 using namespace sc_core;
 using namespace sc_dt;
 
-template<uint32_t WIDTH>
-struct counter: sc_module
+struct hello_world: sc_module
 {
 	sc_in<bool> clk;
 	sc_in<bool> rst;
-	sc_in<sc_uint<WIDTH>> max;
+	sc_out<bool> out;
 
-	sc_out<sc_uint<WIDTH>> cnt;
-	sc_out<bool> carry;
+	sc_signal<sc_uint<32>> cnt;
 
-	SC_CTOR(counter)
+	SC_CTOR(hello_world)
 	{
 		SC_THREAD(run);
 		sensitive << clk.pos();
-
 		async_reset_signal_is(rst,0);
+
+		SC_METHOD(out_logic);
+		sensitive << cnt;
 	}
 
 	void run()
 	{
 		cnt = 0;
-		carry = 0;
 		while(1)
 		{
 			wait();
 			cnt = cnt.read() + 1;
-			carry = 0;
-			if(cnt == max)
-			{
-				cnt = 0;
-				carry = 1;
-			}
 		}
+	}
+
+	void out_logic()
+	{
+		out = cnt.read()[15];
 	}
 };
 
-#endif//__COUNTER_HPP__
+#endif//__HELLO_WORLD_HPP__

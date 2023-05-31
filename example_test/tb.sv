@@ -4,10 +4,8 @@ module tb();
 
 logic clk;
 logic rst;
-logic rx,en,busy;
-logic [7:0] data;
 
-uart_rx ur(clk,rst,rx,en,busy,data);
+top t(clk,rst);
 
 ////////////////////////////////////////////////////////////////////////////////////
 

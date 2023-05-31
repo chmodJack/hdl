@@ -38,7 +38,7 @@ struct fifo: sc_module
 	SC_CTOR(fifo)
 	{
 		SC_THREAD(run);
-		sensitive << clk.pos() << rst.neg();
+		sensitive << clk.pos();
 
 		async_reset_signal_is(rst,0);
 	}

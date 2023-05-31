@@ -29,7 +29,7 @@ struct uart_rx: sc_module
 	SC_CTOR(uart_rx)
 	{
 		SC_THREAD(run);
-		sensitive << clk.pos() << rst.neg();
+		sensitive << clk.pos();
 
 		async_reset_signal_is(rst,0);
 	}

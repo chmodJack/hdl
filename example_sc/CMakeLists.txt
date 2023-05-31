@@ -5,4 +5,4 @@ find_package(SVC REQUIRED)
 set(CMAKE_CXX_STANDARD 17)
 add_executable(main main.cpp)
 
-svc_target(main INIT_LOCAL_VARS ELAB_TOP top_inst)
+svc_target(main INIT_LOCAL_VARS ELAB_TOP top)

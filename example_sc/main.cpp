@@ -1,21 +1,27 @@
 #include <systemc.h>
 
+#include "hello_world.hpp"
 #include "counter.hpp"
+#include "is_prime.hpp"
+#include "fifo.hpp"
 #include "uart_tx.hpp"
 #include "uart_rx.hpp"
-#include "fifo.hpp"
-#include "is_prime.hpp"
 
-struct top: sc_module 
+struct top: sc_module
 {
-	sc_signal<bool> clk;
-	sc_signal<bool> rst;
+	sc_in<bool> clk;
+	sc_in<bool> rst;
 
-	uart_tx ut{"ut"};
-	sc_signal<bool> en;
-	sc_signal<sc_uint<8>> data;
-	sc_signal<bool> tx;
-	sc_signal<bool> busy;
+	hello_world hw{"hw"};
+	sc_signal<bool> out;
+
+	counter<32> cn{"cn"};
+	sc_signal<sc_uint<32>> max;
+	sc_signal<sc_uint<32>> cnt;
+	sc_signal<bool> carry;
+
+	is_prime ip{"ip"};
+	sc_signal<bool> is_p;
 
 	fifo ff{"ff"};
 	sc_signal<sc_uint<8>> data_i;
@@ -27,24 +33,38 @@ struct top: sc_module
 	sc_signal<bool> ack_r;
 	sc_signal<bool> ack_w;
 
-	counter<8> cn{"cn"};
-	sc_signal<sc_uint<8>> max;
-	sc_signal<sc_uint<8>> cnt;
-	sc_signal<bool> carry;
+	uart_tx ut{"ut"};
+	sc_signal<bool> en_tx;
+	sc_signal<sc_uint<8>> data_tx;
+	sc_signal<bool> tx;
+	sc_signal<bool> busy_tx;
 
+	uart_rx ur{"ur"};
+	sc_signal<bool> en_rx;
+	sc_signal<sc_uint<8>> data_rx;
+	sc_signal<bool> rx;
+	sc_signal<bool> busy_rx;
 
     SC_CTOR(top)
     {
 		SC_THREAD(run);
+		sensitive << clk.pos();
 		async_reset_signal_is(rst,0);
 
 #define BIND(M,P) M.P(P)
-		BIND(ut,clk);
-		BIND(ut,rst);
-		BIND(ut,en);
-		BIND(ut,data);
-		BIND(ut,tx);
-		BIND(ut,busy);
+
+		BIND(hw,clk);
+		BIND(hw,rst);
+		BIND(hw,out);
+		
+		BIND(cn,clk);
+		BIND(cn,rst);
+		BIND(cn,max);
+		BIND(cn,cnt);
+		BIND(cn,carry);
+
+		ip.data(cnt);
+		ip.is_p(is_p);
 
 		BIND(ff,clk);
 		BIND(ff,rst);
@@ -57,96 +77,35 @@ struct top: sc_module
 		BIND(ff,ack_r);
 		BIND(ff,ack_w);
 
-		BIND(cn,clk);
-		BIND(cn,rst);
-		BIND(cn,max);
-		BIND(cn,cnt);
-		BIND(cn,carry);
-#undef BIND
-    }
+		BIND(ut,clk);
+		BIND(ut,rst);
+		ut.en(en_tx);
+		ut.data(data_tx);
+		BIND(ut,tx);
+		ut.busy(busy_tx);
 
-	void run()
-	{
-		while(1)
-		{
-			clk = !clk;
-			wait();
-		}
-	}
-};
-
-struct top_prime: sc_module 
-{
-	sc_in_clk clk;
-	sc_signal<bool> rst;
-
-	counter<32> cn{"cn"};
-	sc_signal<sc_uint<32>> max;
-	sc_signal<sc_uint<32>> cnt;
-	sc_signal<bool> carry;
-
-	is_prime ip{"ip"};
-	sc_signal<bool> is_p;
-
-    SC_CTOR(top_prime)
-    {
-#define BIND(M,P) M.P(P)
-		BIND(cn,clk);
-		BIND(cn,rst);
-		BIND(cn,max);
-		BIND(cn,cnt);
-		BIND(cn,carry);
-
-		ip.data(cnt);
-		ip.is_p(is_p);
-#undef BIND
-
-		SC_THREAD(run);
-		sensitive << clk.pos();
-		async_reset_signal_is(rst,0);
-    }
-	void run()
-	{
-		rst = 1;
-		max = 0xFFFFFFFF;
-
-		while(1)
-		{
-			wait();
-			if(is_p)
-				printf("%d\n",(uint32_t)cnt.read());
-		}
-	}
-};
- 
-struct top_uart_rx: sc_module
-{
-	sc_in_clk clk;
-	sc_signal<bool> rst;
-
-	sc_signal<sc_uint<8>> data;
-	sc_signal<bool> rx,en,busy;
-
-	uart_rx ur{"ur"};
-
-	SC_CTOR(top_uart_rx)
-	{
-#define BIND(M,P) M.P(P)
 		BIND(ur,clk);
 		BIND(ur,rst);
+		ur.en(en_rx);
+		ur.data(data_rx);
 		BIND(ur,rx);
-		BIND(ur,en);
-		BIND(ur,busy);
-		BIND(ur,data);
-#undef BIND
+		ur.busy(busy_rx);
 
-		SC_THREAD(run);
-		sensitive << clk.pos();
-		async_reset_signal_is(rst,0);
-	}
+#undef BIND
+    }
+
 	void run()
 	{
-		rst = 1;
+		max = 0x233;
+		data_i = 0x666;
+
+		en_r = 0;
+		en_w = 0;
+
+		en_tx = 0;
+		data_tx = 0;
+
+		rx = 0;
 
 		while(1)
 		{
@@ -157,10 +116,20 @@ struct top_uart_rx: sc_module
 
 int sc_main (int argc, char **argv)
 {
-    top_uart_rx top_inst("top_inst");
-
 	sc_clock clk{"clk", sc_time(1, SC_NS)};
-	top_inst.clk(clk);
+	sc_signal<bool> rst;
+
+	top top{"top"};
+	top.clk(clk);
+	top.rst(rst);
+
+	rst = 1;
+	sc_start(1,SC_NS);
+
+	rst = 0;
+	sc_start(1,SC_NS);
+
+	rst = 1;
 
     sc_start(10000,SC_NS);
     return 0;

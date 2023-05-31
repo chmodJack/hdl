@@ -7,25 +7,42 @@
 
 //==============================================================================
 //
-// Module: top_uart_rx ()
+// Module: top ()
 //
-module top_uart_rx // "top_inst"
+module top // "top"
 (
-    input logic clk
+    input logic clk,
+    input logic rst
 );
 
 // Variables generated for SystemC signals
-logic rst;
-logic [7:0] data;
+logic out;
+logic [31:0] max;
+logic [31:0] cnt;
+logic carry;
+logic is_p;
+logic [7:0] data_i;
+logic en_r;
+logic en_w;
+logic [7:0] data_o;
+logic full;
+logic empty;
+logic ack_r;
+logic ack_w;
+logic en_tx;
+logic [7:0] data_tx;
+logic tx;
+logic busy_tx;
+logic en_rx;
+logic [7:0] data_rx;
 logic rx;
-logic en;
-logic busy;
+logic busy_rx;
 
 //------------------------------------------------------------------------------
-// Clocked THREAD: run (main.cpp:147:2) 
+// Clocked THREAD: run (main.cpp:97:2) 
 
 // Next-state combinational logic
-always_comb begin : run_comb     // main.cpp:147:2
+always_comb begin : run_comb     // main.cpp:97:2
     run_func;
 end
 function void run_func;
@@ -35,7 +52,13 @@ endfunction
 always_ff @(posedge clk or negedge rst) 
 begin : run_ff
     if ( ~rst ) begin
-        rst <= 1;
+        max <= 'h233;
+        data_i <= 'h666;
+        en_r <= 0;
+        en_w <= 0;
+        en_tx <= 0;
+        data_tx <= 0;
+        rx <= 0;
     end
     else begin
     end
@@ -45,14 +68,60 @@ end
 //------------------------------------------------------------------------------
 // Child module instances
 
+hello_world hw
+(
+  .clk(clk),
+  .rst(rst),
+  .out(out)
+);
+
+counter cn
+(
+  .clk(clk),
+  .rst(rst),
+  .max(max),
+  .cnt(cnt),
+  .carry(carry)
+);
+
+is_prime ip
+(
+  .data(cnt),
+  .is_p(is_p)
+);
+
+fifo ff
+(
+  .clk(clk),
+  .rst(rst),
+  .data_i(data_i),
+  .en_r(en_r),
+  .en_w(en_w),
+  .data_o(data_o),
+  .full(full),
+  .empty(empty),
+  .ack_r(ack_r),
+  .ack_w(ack_w)
+);
+
+uart_tx ut
+(
+  .clk(clk),
+  .rst(rst),
+  .en(en_tx),
+  .data(data_tx),
+  .tx(tx),
+  .busy(busy_tx)
+);
+
 uart_rx ur
 (
   .clk(clk),
   .rst(rst),
   .rx(rx),
-  .en(en),
-  .busy(busy),
-  .data(data)
+  .en(en_rx),
+  .busy(busy_rx),
+  .data(data_rx)
 );
 
 endmodule
@@ -61,9 +130,379 @@ endmodule
 
 //==============================================================================
 //
-// Module: uart_rx (main.cpp:130:2)
+// Module: hello_world (main.cpp:15:2)
 //
-module uart_rx // "top_inst.ur"
+module hello_world // "top.hw"
+(
+    input logic clk,
+    input logic rst,
+    output logic out
+);
+
+// Variables generated for SystemC signals
+logic [31:0] cnt;
+
+//------------------------------------------------------------------------------
+// Clocked THREAD: run (hello_world.hpp:34:2) 
+
+// Thread-local variables
+logic [31:0] cnt_next;
+
+// Next-state combinational logic
+always_comb begin : run_comb     // hello_world.hpp:34:2
+    run_func;
+end
+function void run_func;
+    cnt_next = cnt;
+    cnt_next = cnt + 1;
+endfunction
+
+// Synchronous register update
+always_ff @(posedge clk or negedge rst) 
+begin : run_ff
+    if ( ~rst ) begin
+        cnt <= 0;
+    end
+    else begin
+        cnt <= cnt_next;
+    end
+end
+
+//------------------------------------------------------------------------------
+// Method process: out_logic (hello_world.hpp:44:2) 
+
+always_comb 
+begin : out_logic     // hello_world.hpp:44:2
+    out = cnt[15];
+end
+
+endmodule
+
+
+
+//==============================================================================
+//
+// Module: counter (main.cpp:18:2)
+//
+module counter // "top.cn"
+(
+    input logic clk,
+    input logic rst,
+    input logic [31:0] max,
+    output logic [31:0] cnt,
+    output logic carry
+);
+
+//------------------------------------------------------------------------------
+// Clocked THREAD: run (counter.hpp:34:2) 
+
+// Thread-local variables
+logic [31:0] cnt_next;
+logic carry_next;
+
+// Next-state combinational logic
+always_comb begin : run_comb     // counter.hpp:34:2
+    run_func;
+end
+function void run_func;
+    carry_next = carry;
+    cnt_next = cnt;
+    cnt_next = cnt + 1;
+    carry_next = 0;
+    if (cnt == max)
+    begin
+        cnt_next = 0;
+        carry_next = 1;
+    end
+endfunction
+
+// Synchronous register update
+always_ff @(posedge clk or negedge rst) 
+begin : run_ff
+    if ( ~rst ) begin
+        cnt <= 0;
+        carry <= 0;
+    end
+    else begin
+        cnt <= cnt_next;
+        carry <= carry_next;
+    end
+end
+
+endmodule
+
+
+
+//==============================================================================
+//
+// Module: is_prime (main.cpp:23:2)
+//
+module is_prime // "top.ip"
+(
+    input logic [31:0] data,
+    output logic is_p
+);
+
+//------------------------------------------------------------------------------
+// Method process: run (is_prime.hpp:26:2) 
+
+always_comb 
+begin : run     // is_prime.hpp:26:2
+    integer unsigned a;
+    integer unsigned b;
+    a = data / 2;
+    b = data % 2;
+    if (data == 1)
+    begin
+        is_p = 0;
+    end else begin
+        if (data == 2)
+        begin
+            is_p = 1;
+        end else begin
+            if (b == 0)
+            begin
+                is_p = 0;
+            end else begin
+                is_p = 1;
+                for (integer unsigned i = 3; i <= a; i++)
+                begin
+                    if ((data % i) == 0)
+                    begin
+                        is_p = 0;
+                        break;
+                    end
+                end
+            end
+        end
+    end
+end
+
+endmodule
+
+
+
+//==============================================================================
+//
+// Module: fifo (main.cpp:26:2)
+//
+module fifo // "top.ff"
+(
+    input logic clk,
+    input logic rst,
+    input logic [7:0] data_i,
+    input logic en_r,
+    input logic en_w,
+    output logic [7:0] data_o,
+    output logic full,
+    output logic empty,
+    output logic ack_r,
+    output logic ack_w
+);
+
+//------------------------------------------------------------------------------
+// Clocked THREAD: run (fifo.hpp:46:2) 
+
+// Thread-local variables
+logic [7:0] head;
+logic [7:0] head_next;
+logic [7:0] buffer[8];
+logic [7:0] buffer_next[8];
+logic [7:0] tail;
+logic [7:0] tail_next;
+logic [7:0] data_o_next;
+logic full_next;
+logic empty_next;
+logic ack_r_next;
+logic ack_w_next;
+
+// Next-state combinational logic
+always_comb begin : run_comb     // fifo.hpp:46:2
+    run_func;
+end
+function void run_func;
+    ack_r_next = ack_r;
+    ack_w_next = ack_w;
+    buffer_next = buffer;
+    data_o_next = data_o;
+    empty_next = empty;
+    full_next = full;
+    head_next = head;
+    tail_next = tail;
+    if (en_r && !empty)
+    begin
+        data_o_next = buffer_next[head_next];
+        head_next = signed'({1'b0, head_next}) + 1;
+        if (signed'({1'b0, head_next}) == 8)
+        begin
+            head_next = 0;
+        end
+        if (signed'({1'b0, head_next}) == signed'({1'b0, tail_next}))
+        begin
+            empty_next = 1;
+        end
+        ack_r_next = 1;
+        full_next = 0;
+    end else begin
+        ack_r_next = 0;
+    end
+    if (en_w && !full)
+    begin
+        buffer_next[tail_next] = data_i;
+        tail_next = signed'({1'b0, tail_next}) + 1;
+        if (signed'({1'b0, tail_next}) == 8)
+        begin
+            tail_next = 0;
+        end
+        if (signed'({1'b0, tail_next}) == signed'({1'b0, head_next}))
+        begin
+            full_next = 1;
+        end
+        ack_w_next = 1;
+        empty_next = 0;
+    end else begin
+        ack_w_next = 0;
+    end
+endfunction
+
+// Synchronous register update
+always_ff @(posedge clk or negedge rst) 
+begin : run_ff
+    if ( ~rst ) begin
+        data_o <= 0;
+        full <= 0;
+        empty <= 1;
+        ack_r <= 0;
+        ack_w <= 0;
+        head <= 0;
+        tail <= 0;
+        for (integer i = 0; i < 8; i++)
+        begin
+            buffer[i] <= 0;
+        end
+    end
+    else begin
+        head <= head_next;
+        buffer <= buffer_next;
+        tail <= tail_next;
+        data_o <= data_o_next;
+        full <= full_next;
+        empty <= empty_next;
+        ack_r <= ack_r_next;
+        ack_w <= ack_w_next;
+    end
+end
+
+endmodule
+
+
+
+//==============================================================================
+//
+// Module: uart_tx (main.cpp:36:2)
+//
+module uart_tx // "top.ut"
+(
+    input logic clk,
+    input logic rst,
+    input logic en,
+    input logic [7:0] data,
+    output logic tx,
+    output logic busy
+);
+
+//------------------------------------------------------------------------------
+// Clocked THREAD: run (uart_tx.hpp:34:2) 
+
+// Thread-local variables
+logic tx_next;
+logic busy_next;
+logic [3:0] run_PROC_STATE;
+logic [3:0] run_PROC_STATE_next;
+
+// Next-state combinational logic
+always_comb begin : run_comb     // uart_tx.hpp:34:2
+    run_func;
+end
+function void run_func;
+    busy_next = busy;
+    tx_next = tx;
+    run_PROC_STATE_next = run_PROC_STATE;
+    
+    case (run_PROC_STATE)
+        0: begin
+            if (en)
+            begin
+                busy_next = 1;
+                tx_next = 0;
+                run_PROC_STATE_next = 1; return;    // uart_tx.hpp:46:13;
+            end
+            run_PROC_STATE_next = 0; return;    // uart_tx.hpp:41:4;
+        end
+        1: begin
+            tx_next = data[0];
+            run_PROC_STATE_next = 2; return;    // uart_tx.hpp:47:26;
+        end
+        2: begin
+            tx_next = data[1];
+            run_PROC_STATE_next = 3; return;    // uart_tx.hpp:48:26;
+        end
+        3: begin
+            tx_next = data[2];
+            run_PROC_STATE_next = 4; return;    // uart_tx.hpp:49:26;
+        end
+        4: begin
+            tx_next = data[3];
+            run_PROC_STATE_next = 5; return;    // uart_tx.hpp:50:26;
+        end
+        5: begin
+            tx_next = data[4];
+            run_PROC_STATE_next = 6; return;    // uart_tx.hpp:51:26;
+        end
+        6: begin
+            tx_next = data[5];
+            run_PROC_STATE_next = 7; return;    // uart_tx.hpp:52:26;
+        end
+        7: begin
+            tx_next = data[6];
+            run_PROC_STATE_next = 8; return;    // uart_tx.hpp:53:26;
+        end
+        8: begin
+            tx_next = data[7];
+            run_PROC_STATE_next = 9; return;    // uart_tx.hpp:54:26;
+        end
+        9: begin
+            tx_next = 1;
+            busy_next = 0;
+            run_PROC_STATE_next = 0; return;    // uart_tx.hpp:41:4;
+        end
+    endcase
+endfunction
+
+// Synchronous register update
+always_ff @(posedge clk or negedge rst) 
+begin : run_ff
+    if ( ~rst ) begin
+        tx <= 1;
+        busy <= 0;
+        run_PROC_STATE <= 0;    // uart_tx.hpp:41:4;
+    end
+    else begin
+        tx <= tx_next;
+        busy <= busy_next;
+        run_PROC_STATE <= run_PROC_STATE_next;
+    end
+end
+
+endmodule
+
+
+
+//==============================================================================
+//
+// Module: uart_rx (main.cpp:42:2)
+//
+module uart_rx // "top.ur"
 (
     input logic clk,
     input logic rst,

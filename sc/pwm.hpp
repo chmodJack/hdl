@@ -1,50 +1,57 @@
 /*************************************************************************
-    > File Name       : hello_world.hpp
+    > File Name       : pwm.hpp
     > Author          : chmodJack
     > Mail            : 158754845@qq.com 
     > GitHub          : https://github.com/chmodJack 
-    > Created Time    : Wed May 31 16:39:12 2023
+    > Created Time    : Thu Jun  1 11:01:33 2023
     > Description     : 
 *************************************************************************/
-#ifndef __HELLO_WORLD_HPP__
-#define __HELLO_WORLD_HPP__
+#ifndef __PWM_HPP__
+#define __PWM_HPP__
 
 #include <systemc.h>
 using namespace sc_core;
 using namespace sc_dt;
 
-struct hello_world: sc_module
+struct pwm: sc_module
 {
 	sc_in<bool> clk;
 	sc_in<bool> rst;
+
+	sc_in<sc_uint<8>> cycle_l;
+	sc_in<sc_uint<8>> cycle_h;
+
 	sc_out<bool> out;
 
-	sc_signal<sc_uint<32>> cnt;
-
-	SC_CTOR(hello_world)
+	uint8_t cnt;
+	SC_CTOR(pwm)
 	{
 		SC_THREAD(run);
 		sensitive << clk.pos();
 		async_reset_signal_is(rst,0);
-
-		SC_METHOD(out_logic);
-		sensitive << cnt;
 	}
-
 	void run()
 	{
 		cnt = 0;
+		out = 0;
 		while(1)
 		{
 			wait();
-			cnt = cnt.read() + 1;
-		}
-	}
+			cnt = cnt + 1;
 
-	void out_logic()
-	{
-		out = cnt.read()[15];
+			if((out == 0) && (cnt == cycle_l.read()))
+			{
+				cnt = 0;
+				out = 1;
+			}
+
+			if((out == 1) && (cnt == cycle_h.read()))
+			{
+				cnt = 0;
+				out = 0;
+			}
+		}
 	}
 };
 
-#endif//__HELLO_WORLD_HPP__
+#endif//__PWM_HPP__

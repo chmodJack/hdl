@@ -6,6 +6,7 @@
 #include "fifo.hpp"
 #include "uart_tx.hpp"
 #include "uart_rx.hpp"
+#include "pwm.hpp"
 
 struct top: sc_module
 {
@@ -13,7 +14,10 @@ struct top: sc_module
 	sc_in<bool> rst;
 
 	hello_world hw{"hw"};
-	sc_signal<bool> out;
+	sc_signal<bool> key[4];
+	sc_signal<bool> led[4];
+	sc_signal<bool> touch;
+	sc_signal<bool> beep;
 
 	counter<32> cn{"cn"};
 	sc_signal<sc_uint<32>> max;
@@ -45,6 +49,11 @@ struct top: sc_module
 	sc_signal<bool> rx;
 	sc_signal<bool> busy_rx;
 
+	pwm pw{"pw"};
+	sc_signal<sc_uint<8>> cycle_l;
+	sc_signal<sc_uint<8>> cycle_h;
+	sc_signal<bool> pwm_out;
+
     SC_CTOR(top)
     {
 		SC_THREAD(run);
@@ -55,7 +64,16 @@ struct top: sc_module
 
 		BIND(hw,clk);
 		BIND(hw,rst);
-		BIND(hw,out);
+		BIND(hw,key[0]);
+		BIND(hw,key[1]);
+		BIND(hw,key[2]);
+		BIND(hw,key[3]);
+		BIND(hw,led[0]);
+		BIND(hw,led[1]);
+		BIND(hw,led[2]);
+		BIND(hw,led[3]);
+		BIND(hw,touch);
+		BIND(hw,beep);
 		
 		BIND(cn,clk);
 		BIND(cn,rst);
@@ -91,6 +109,11 @@ struct top: sc_module
 		BIND(ur,rx);
 		ur.busy(busy_rx);
 
+		BIND(pw,clk);
+		BIND(pw,rst);
+		BIND(pw,cycle_l);
+		BIND(pw,cycle_h);
+		pw.out(pwm_out);
 #undef BIND
     }
 
